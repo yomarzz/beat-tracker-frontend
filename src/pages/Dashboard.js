@@ -1,119 +1,112 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { Link } from "react-router-dom";
 
-const Dashboard = () => {
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:10000";
+
+export default function Dashboard() {
   const [emails, setEmails] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [status, setStatus] = useState(""); // for showing messages like “Fetched 10 emails”
+  const [label, setLabel] = useState("INBOX");
 
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:10000";
-
-  // 🧠 Load emails from database
-  const loadEmails = async () => {
+  const fetchEmails = async (selectedLabel = "INBOX") => {
     try {
       setLoading(true);
-      setError("");
+      setLabel(selectedLabel);
+      await axios.get(`${API_URL}/api/fetch-emails?label=${selectedLabel}`);
       const res = await axios.get(`${API_URL}/api/emails`);
       setEmails(res.data.emails || []);
     } catch (err) {
-      console.error("Error loading emails:", err);
-      setError("Failed to load emails");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 🚀 Fetch new emails from Gmail and then reload from DB
-  const refreshEmails = async () => {
-    try {
-      setLoading(true);
-      setStatus("Fetching latest Gmail messages...");
-      const res = await axios.get(`${API_URL}/api/fetch-emails`);
-      console.log("Fetch response:", res.data);
-      setStatus(`Fetched ${res.data.fetched || 0} new, skipped ${res.data.skipped || 0}`);
-      await loadEmails();
-    } catch (err) {
-      console.error("Error refreshing emails:", err);
-      setError("Failed to refresh emails — try reauthenticating.");
+      console.error("Error fetching emails:", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadEmails();
+    fetchEmails();
   }, []);
 
-  const containerStyle = {
-    fontFamily: "Inter, sans-serif",
-    minHeight: "100vh",
-    background: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)",
-    color: "white",
-    padding: "2rem",
-    textAlign: "center",
-  };
-
-  const cardStyle = {
-    background: "rgba(255, 255, 255, 0.1)",
-    borderRadius: "12px",
-    padding: "1rem 1.5rem",
-    marginBottom: "1rem",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
-    textAlign: "left",
-    transition: "transform 0.2s ease",
-  };
-
-  const buttonStyle = {
-    background: "#00bcd4",
-    color: "white",
-    border: "none",
-    padding: "10px 20px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    marginTop: "1rem",
-    transition: "background 0.3s ease",
-  };
+  const filteredEmails = emails.filter(
+    (e) =>
+      e.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      e.sender?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div style={containerStyle}>
-      <h1>🎵 Beat Tracker Dashboard</h1>
-      <p style={{ opacity: 0.8 }}>Track your sent beats straight from Gmail.</p>
+    <div className="p-6 bg-gray-950 min-h-screen text-white">
+      {/* 🔹 In-Dashboard Navigation */}
+      <nav className="flex gap-3 mb-6 border-b border-gray-800 pb-2">
+        <Link to="/dashboard" className="hover:text-indigo-400">
+          Dashboard
+        </Link>
+        <Link to="/analytics" className="hover:text-indigo-400">
+          Analytics
+        </Link>
+        <Link to="/storage" className="hover:text-indigo-400">
+          Storage
+        </Link>
+        <Link to="/" className="ml-auto text-gray-400 hover:text-indigo-400">
+          Logout
+        </Link>
+      </nav>
 
-      {loading && <p>Loading...</p>}
-      {status && <p style={{ color: "#00e5ff" }}>{status}</p>}
-      {error && <p style={{ color: "#ff7675" }}>{error}</p>}
+      <h1 className="text-2xl font-bold mb-4">📬 Beat Tracker Dashboard</h1>
 
-      {Array.isArray(emails) && emails.length > 0 ? (
-        <div style={{ maxWidth: "600px", margin: "2rem auto" }}>
-          {emails.map((email) => (
-            <div key={email.id} style={cardStyle}>
-              <strong>From:</strong> {email.sender} <br />
-              <strong>Subject:</strong> {email.subject || "No subject"} <br />
-              <strong>Snippet:</strong>{" "}
-              {email.body?.slice(0, 100) || "No content"}...
-              <br />
-              <em>
-                Received: {new Date(email.received_at).toLocaleString()}
-              </em>
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => fetchEmails("INBOX")}
+          className={`px-3 py-1 rounded ${
+            label === "INBOX" ? "bg-indigo-600" : "bg-gray-800"
+          }`}
+        >
+          Inbox
+        </button>
+        <button
+          onClick={() => fetchEmails("SENT")}
+          className={`px-3 py-1 rounded ${
+            label === "SENT" ? "bg-indigo-600" : "bg-gray-800"
+          }`}
+        >
+          Sent
+        </button>
+        <button
+          onClick={() => fetchEmails(label)}
+          className="ml-auto bg-indigo-500 px-3 py-1 rounded hover:bg-indigo-600"
+        >
+          🔄 Refresh
+        </button>
+      </div>
+
+      <input
+        type="text"
+        placeholder="Search beats or senders..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-full p-2 mb-4 rounded bg-gray-900 text-white"
+      />
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : filteredEmails.length === 0 ? (
+        <p>No emails found.</p>
+      ) : (
+        <div className="grid gap-3">
+          {filteredEmails.map((email) => (
+            <div
+              key={email.id}
+              className="p-3 rounded bg-gray-900 border border-gray-700 hover:border-indigo-500 transition"
+            >
+              <p className="text-indigo-400 font-semibold">{email.sender}</p>
+              <p className="font-medium">{email.subject}</p>
+              <p className="text-sm text-gray-400">
+                {new Date(email.received_at).toLocaleString()}
+              </p>
             </div>
           ))}
         </div>
-      ) : (
-        !loading && <p>No emails found.</p>
       )}
-
-      <button
-        onClick={refreshEmails}
-        style={buttonStyle}
-        onMouseOver={(e) => (e.target.style.background = "#0097a7")}
-        onMouseOut={(e) => (e.target.style.background = "#00bcd4")}
-      >
-        🔄 Refresh Emails
-      </button>
     </div>
   );
-};
-
-export default Dashboard;
+}
