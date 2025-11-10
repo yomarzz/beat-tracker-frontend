@@ -1,20 +1,12 @@
-<Link to="/dashboard" className="text-indigo-400 hover:underline">
-  ← Back to Dashboard
-</Link>
-
+// ✅ All imports at top
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Link } from "react-router-dom"; // ← keep this up here, not below any code
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:10000";
 
+// ✅ Component starts after imports
 export default function Analytics() {
   const [data, setData] = useState([]);
 
@@ -24,6 +16,10 @@ export default function Analytics() {
 
   return (
     <div className="p-6 bg-gray-950 min-h-screen text-white">
+      <Link to="/dashboard" className="text-indigo-400 hover:underline mb-4 inline-block">
+        ← Back to Dashboard
+      </Link>
+
       <h1 className="text-2xl font-bold mb-4">📊 Beat Analytics</h1>
       {data.length === 0 ? (
         <p>No analytics data available.</p>
